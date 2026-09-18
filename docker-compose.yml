@@ -1,0 +1,39 @@
+services:
+  phoenix:
+    image: arizephoenix/phoenix:latest
+    container_name: phoenix
+    ports:
+      - "6006:6006"
+      - "4317:4317"
+    restart: unless-stopped
+    volumes:
+      - phoenix_data:/data
+
+  weaviate:
+    image: cr.weaviate.io/semitechnologies/weaviate:1.38.3
+    container_name: weaviate
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    restart: unless-stopped
+    environment:
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+
+  redis:
+    image: docker.arvancloud.ir/redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  phoenix_data:
+  weaviate_data:
+  redis_data:
