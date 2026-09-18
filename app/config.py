@@ -3,10 +3,10 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    openai_api_key: Optional[str] = "aa-BSFlJZgRVq7FPhrItgfG1nW6RE1ypZFJIBK5jifhWZ5XWlNY"
+    openai_api_key: Optional[str] = ""
     openai_model: str = "gpt-4o-mini" #"gpt-5.4-mini"
     embedding_model: str = "text-embedding-3-small"
-    base_url: str = "https://api.avalai.ir/v1"
+    base_url: str = ""
 
     max_pdf_pages: int = 100
 
