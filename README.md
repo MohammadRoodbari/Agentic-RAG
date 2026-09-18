@@ -8,12 +8,11 @@ A **Retrieval-Augmented Generation** pipeline that answers natural-language ques
 
 - **Parent-child chunking** — documents are split into large parent windows for context, then each parent is split further into small child windows. Only the children are embedded and searched, but the LLM is given the full parent text, so retrieval stays precise while generation stays well-grounded.
 - **Hybrid retrieval via Weaviate** — native hybrid search (BM25 + vector) over child chunks, with `hybrid_alpha` tuning the BM25/vector balance (`0` = pure BM25, `1` = pure vector).
-- **Redis-backed parent store** — child-chunk hits are hydrated back to their full parent text via a fast Redis lookup keyed by parent id, with an optional TTL.
+- **Redis-backed parent store** — child-chunk hits are hydrated back to their full parent text via a fast Redis lookup keyed by parent id.
 - **Agentic pipeline (LangGraph)** — a `StateGraph` (validate → retrieve → generate → format) that short-circuits to an error state at any stage.
 - **Grounded answers with citations** — every answer references the exact source document and page (e.g. `[1] gdpr.pdf, Page 12`).
 - **Observability via Phoenix** — every pipeline run is traced end-to-end; Ragas scores are attached to the matching trace as span annotations.
 - **Evaluation suite** — online, per-query Ragas scoring on every live question, plus offline batch scoring against a curated, reference-labeled QA set — both built from one shared metrics factory so they can't drift out of sync.
-- **Provider-agnostic** — works with any OpenAI-compatible chat/embeddings endpoint via a configurable `BASE_URL`, not locked to `api.openai.com`.
 
 ---
 
