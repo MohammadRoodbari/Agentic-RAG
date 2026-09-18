@@ -1,0 +1,85 @@
+import re
+
+from app.agent.state import Citation, QAState
+from app.config import settings
+from app.services.retriever import hybrid_retrieve
+
+
+def validate_input(state: QAState) -> dict:
+    if not state["question"].strip():
+        return {"error": "Question must not be empty"}
+    if len(state["question"]) > 2000:
+        return {"error": "Question exceeds 2000 character limit"}
+    return {}
+
+
+def retrieve(state: QAState) -> dict:
+    if state.get("error"):
+        return {}
+    try:
+        chunks = hybrid_retrieve(state["question"])
+        if not chunks:
+            return {"error": "No relevant documents found. Please ingest documents first."}
+        return {"retrieved_chunks": chunks}
+    except Exception as exc:
+        return {"error": f"Retrieval failed: {exc}"}
+
+
+def generate(state: QAState) -> dict:
+    if state.get("error"):
+        return {}
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=settings.require_api_key(), base_url=settings.base_url)
+
+        context_parts = []
+        for i, chunk in enumerate(state["retrieved_chunks"], 1):
+            context_parts.append(
+                f"[{i}] (Source: {chunk['source']}, Page {chunk['page']})\n"
+                f"{chunk['text']}"
+            )
+        context = "\n\n".join(context_parts)
+        # breakpoint()
+        system_prompt = (
+            "You are a compliance expert assistant. Answer questions based ONLY on the "
+            "provided document excerpts. Cite your sources using [1], [2], etc. to "
+            "reference the excerpt numbers. If the provided excerpts don't contain "
+            "enough information to answer the question, say so explicitly."
+        )
+        user_prompt = f"Document excerpts:\n\n{context}\n\nQuestion: {state['question']}"
+
+        response = client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            max_tokens=1024,
+        )
+        return {"answer": response.choices[0].message.content}
+    except Exception as exc:
+        return {"error": f"Generation failed: {exc}"}
+
+
+def format_response(state: QAState) -> dict:
+    if state.get("error"):
+        return {}
+
+    cited_indices = {
+        int(m.group(1)) for m in re.finditer(r"\[(\d+)\]", state["answer"])
+    }
+
+    citations = []
+    for i, chunk in enumerate(state["retrieved_chunks"], 1):
+        if i in cited_indices:
+            citations.append(
+                Citation(
+                    source=chunk["source"],
+                    page=chunk["page"],
+                    chunk_index=chunk["chunk_index"],
+                    text=chunk["text"][:200],
+                )
+            )
+
+    return {"answer": state["answer"].strip(), "citations": citations}
